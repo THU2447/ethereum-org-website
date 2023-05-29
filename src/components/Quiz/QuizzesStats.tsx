@@ -11,6 +11,7 @@ import {
   Text,
 } from "@chakra-ui/react"
 import { FaTwitter } from "react-icons/fa"
+import { useI18next } from "gatsby-plugin-react-i18next"
 
 import Button from "../Button"
 import Translation from "../Translation"
@@ -18,7 +19,13 @@ import { TrophyIcon } from "../icons/quiz"
 
 import { QuizzesHubContext } from "./context"
 
+// Utils
 import { getNumberOfCompletedQuizzes, getTotalQuizzesPoints } from "./utils"
+import {
+  isLangRightToLeft,
+  getLocaleForNumberFormat,
+} from "../../utils/translations"
+import { Lang } from "../../utils/languages"
 
 import { QuizShareStats } from "../../types"
 
@@ -50,6 +57,9 @@ const handleShare = ({ score, total }: QuizShareStats) =>
   })
 
 const QuizzesStats: React.FC = () => {
+  const { language } = useI18next()
+  const localeForQuizStats = getLocaleForNumberFormat(language as Lang)
+  const isRightToLeft = isLangRightToLeft(language as Lang)
   const { score: userScore, completed, average } = useContext(QuizzesHubContext)
   const totalQuizzesNumber =
     ethereumBasicsQuizzes.length + usingEthereumQuizzes.length
@@ -57,6 +67,38 @@ const QuizzesStats: React.FC = () => {
   const numberOfCompletedQuizzes = getNumberOfCompletedQuizzes(
     JSON.parse(completed)
   )
+
+  // Data from Matomo, manually updated
+  const collectiveQuestionsAnswered = 100000
+  const collectiveAverageScore = 67.4 / 100 // converted to fraction for percentage format
+  const collectiveRetryRate = 15.6 / 100 // converted to fraction for percentage format
+
+  const formatNumber = new Intl.NumberFormat(localeForQuizStats, {
+    style: "decimal",
+    minimumSignificantDigits: 2,
+    maximumSignificantDigits: 3,
+  })
+
+  const formatPercent = new Intl.NumberFormat(localeForQuizStats, {
+    style: "percent",
+    minimumSignificantDigits: 2,
+    maximumSignificantDigits: 3,
+  })
+
+  // formatted collective stats
+  const formattedCollectiveQuestionsAnswered = formatNumber.format(
+    collectiveQuestionsAnswered
+  )
+  // If language is RTL, more than indicator should go at start
+  const textForCollectiveQuestions = isRightToLeft
+    ? `+${formattedCollectiveQuestionsAnswered}`
+    : `${formattedCollectiveQuestionsAnswered}+`
+
+  const formattedCollectiveAverageScore = formatPercent.format(
+    collectiveAverageScore
+  )
+  const formattedCollectiveRetryRate = formatPercent.format(collectiveRetryRate)
+  const formattedUserAverageScore = formatPercent.format(average)
 
   return (
     <Box flex={1} order={{ base: 1, lg: 2 }} w="full">
@@ -125,7 +167,7 @@ const QuizzesStats: React.FC = () => {
                 <Text mr={10} mb={0} mt={{ base: 2, lg: 0 }} color="bodyLight">
                   <Translation id="average-score" />{" "}
                   <Text as="span" color="body">
-                    {average}%
+                    {formattedUserAverageScore}
                   </Text>
                 </Text>
 
@@ -163,7 +205,7 @@ const QuizzesStats: React.FC = () => {
                 <Translation id="average-score" />
               </Text>
               {/* Data from Matomo, manually updated */}
-              <Text color="body">67.4%</Text>
+              <Text color="body">{formattedCollectiveAverageScore}</Text>
             </Stack>
 
             <Stack>
@@ -172,7 +214,7 @@ const QuizzesStats: React.FC = () => {
               </Text>
 
               {/* Data from Matomo, manually updated */}
-              <Text color="body">100 000+</Text>
+              <Text color="body">{textForCollectiveQuestions}</Text>
             </Stack>
 
             <Stack>
@@ -181,7 +223,7 @@ const QuizzesStats: React.FC = () => {
               </Text>
 
               {/* Data from Matomo, manually updated */}
-              <Text color="body">15.6%</Text>
+              <Text color="body">{formattedCollectiveRetryRate}</Text>
             </Stack>
           </Flex>
         </Flex>
